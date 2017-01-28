@@ -117,7 +117,6 @@ def limit_remote_addr():
 
 if __name__ == "__main__":
     addresses = [netaddr.IPNetwork(c) for c in cfg.get('global', 'sources').split()]
-    print(addresses)
 
     app.run(debug=cfg.get("global", "debug", fallback=False),
             host=cfg.get("global", "bindhost", fallback="127.0.0.1"),
