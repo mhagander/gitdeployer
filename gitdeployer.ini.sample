@@ -2,7 +2,10 @@
 ; Set to true for debugging. Always false in production!
 debug=False
 
-; TCP port to listen to. Will bind to 0.0.0.0, use a firewall!
+; IP to bind to
+bindhost=127.0.0.1
+
+; TCP port to listen to.
 port=9991
 
 ; IP addresses or netmasks allowed to make requests. NOTE! You should

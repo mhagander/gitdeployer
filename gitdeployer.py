@@ -120,4 +120,5 @@ if __name__ == "__main__":
     print(addresses)
 
     app.run(debug=cfg.get("global", "debug", fallback=False),
+            host=cfg.get("global", "bindhost", fallback="127.0.0.1"),
             port=cfg.getint('global', 'port'))
