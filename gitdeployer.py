@@ -48,7 +48,7 @@ app = Flask('gitdeployer')
 deploystatic = cfg.get('global', 'deploystatic')
 
 
-@app.route("/deploy/<repository>/<key>")
+@app.route("/deploy/<repository>/<key>", methods=['GET', 'POST'])
 def deploy(repository, key):
     cfg.refresh()
 
