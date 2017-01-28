@@ -11,6 +11,9 @@ import os
 import subprocess
 import sys
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 class ReloadingConfigParser(object):
     def __init__(self, filename):
         self.filename = filename
@@ -26,7 +29,7 @@ class ReloadingConfigParser(object):
 
     def refresh(self):
         if os.stat(self.filename).st_mtime != self.loadtime:
-            print("Reloading configuration")
+            eprint("Reloading configuration")
             self._load()
 
 def run_command(reponame, *command):
@@ -44,9 +47,6 @@ app = Flask('gitdeployer')
 
 deploystatic = cfg.get('global', 'deploystatic')
 
-
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
 
 @app.route("/deploy/<repository>/<key>")
 def deploy(repository, key):
