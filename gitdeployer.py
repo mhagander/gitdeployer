@@ -9,6 +9,7 @@ import configparser
 import netaddr
 import os
 import subprocess
+import sys
 
 class ReloadingConfigParser(object):
     def __init__(self, filename):
@@ -43,6 +44,10 @@ app = Flask('gitdeployer')
 
 deploystatic = cfg.get('global', 'deploystatic')
 
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 @app.route("/deploy/<repository>/<key>")
 def deploy(repository, key):
     cfg.refresh()
@@ -51,14 +56,14 @@ def deploy(repository, key):
         return "Repo not found", 404
     for k in 'key', 'type', 'root':
         if not cfg.has_option(repository, k):
-            print("Repository {0} is missing key {1}".format(repository, key))
+            eprint("Repository {0} is missing key {1}".format(repository, key))
             return "Repo misconfigured", 500
     if not cfg.get(repository, 'key') == key:
         return "Invalid key", 401
 
     # We only do git, so verify that the root is a dictionary
     if not os.path.isdir("{0}/.git".format(cfg.get(repository, 'root'))):
-        print("Repository {0} has a root {1} that is not a git repository".format(
+        eprint("Repository {0} has a root {1} that is not a git repository".format(
             repository, cfg.get(repository, 'root')))
         return "Not a git repo", 500
 
@@ -73,7 +78,7 @@ def deploy(repository, key):
             # The correct branch has to be checked out.
             for k in 'target', :
                 if not cfg.has_option(repository, k):
-                    print("Repository {0} is missing key {1}".format(repository, k))
+                    eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
 
             git_operation(repository, 'pull', '--rebase')
@@ -86,7 +91,7 @@ def deploy(repository, key):
             # that using a tar export.
             for k in 'target', 'branch' :
                 if not cfg.has_option(repository, k):
-                    print("Repository {0} is missing key {1}".format(repository, k))
+                    eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
 
             git_operation(repository, 'fetch')
@@ -97,14 +102,14 @@ def deploy(repository, key):
                         cfg.get(repository, 'branch'),
             )
         else:
-            print("Repository {0} has an invalid type {1}".format(
+            eprint("Repository {0} has an invalid type {1}".format(
                 repository, cfg.get(repository, 'type')))
             return "Invalid git repo type", 500
     except Exception as e:
-        print("Failed to update {0}: {1}".format(repository, e))
+        eprint("Failed to update {0}: {1}".format(repository, e))
         return "Internal error", 500
 
-    print("Deployed repository {0}".format(repository))
+    eprint("Deployed repository {0}".format(repository))
     return "OK"
 
 @app.before_request
