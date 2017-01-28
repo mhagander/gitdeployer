@@ -1,0 +1,14 @@
+[Unit]
+Description=git deployer
+After=network.target
+
+[Service]
+ExecStart=/usr/local/gitdeployer/gitdeployer.py
+WorkingDirectory=/usr/local/gitdeployer
+Restart=always
+RestartSec=30
+User=topsecret
+Group=topsecret
+
+[Install]
+WantedBy=multi-user.target
