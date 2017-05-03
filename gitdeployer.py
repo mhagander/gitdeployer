@@ -56,7 +56,7 @@ def deploy(repository, key):
         return "Repo not found", 404
     for k in 'key', 'type', 'root':
         if not cfg.has_option(repository, k):
-            eprint("Repository {0} is missing key {1}".format(repository, key))
+            eprint("Repository {0} is missing key {1}".format(repository, k))
             return "Repo misconfigured", 500
     if not cfg.get(repository, 'key') == key:
         return "Invalid key", 401
