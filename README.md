@@ -25,9 +25,14 @@ Repository types
 For each repository, a type is specified. All repositories include a
 git repository root, but some types also need more information.
 
+### static
+
+This repository type is almost as simple. It will just execute a `git
+fetch --rebase` in the root directory and then it will be done.
+
 ### django
 
-This repository type is the simplest. It will just execute a `git
+This repository type is almost as simple. It will just execute a `git
 fetch --rebase` in the root directory and then it will be done.
 
 A consideration for the future could be to run an automatic migration

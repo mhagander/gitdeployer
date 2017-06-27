@@ -73,6 +73,9 @@ def deploy(repository, key):
             # has changed, we count on the uwsgi process to reload the app.
             # XXX: in the future, consider doing automatic migration?
             git_operation(repository, 'pull', '--rebase')
+        elif cfg.get(repository, 'type') == 'static':
+            # This is just a pure static checkout
+            git_operation(repository, 'pull', '--rebase')
         elif cfg.get(repository, 'type') == 'pgeustatic':
             # For pgeu static, we pull the git repo and then deploy from there.
             # The correct branch has to be checked out.
