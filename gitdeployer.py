@@ -89,6 +89,11 @@ def deploy(repository, key):
                         cfg.get(repository, 'root'),
                         cfg.get(repository, 'target'),
             )
+            if cfg.has_option(repository, 'templates'):
+                run_command(repository, deploystatic, '--templates',
+                            cfg.get(repository, 'root'),
+                            cfg.get(repository, 'templates'),
+                )
         elif cfg.get(repository, 'type') == 'pgeubranch':
             # For pgeu branch, we fetch the git repository and then deploy directly from
             # that using a tar export.
@@ -104,6 +109,13 @@ def deploy(repository, key):
                         '--branch',
                         cfg.get(repository, 'branch'),
             )
+            if cfg.has_option(repository, 'templates'):
+                run_command(repository, deploystatic, '--templates',
+                            cfg.get(repository, 'root'),
+                            cfg.get(repository, 'templates'),
+                            '--branch',
+                            cfg.get(repository, 'branch'),
+                )
         else:
             eprint("Repository {0} has an invalid type {1}".format(
                 repository, cfg.get(repository, 'type')))

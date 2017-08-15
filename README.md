@@ -46,6 +46,7 @@ executes `deploystatic`. It needs the following configuration
 variables set:
 
 `target` specifies the directory to deploy the website to.
+`templates` specifies the directory to deploy raw templates into.
 
 ## pgeubranch
 
@@ -57,6 +58,7 @@ branch specified. It needs the following configuration
 variables set:
 
 `target` specifies the directory to deploy the website to.
+`templates` specifies the directory to deploy raw templates into.
 
 `branch` specifies the branch name, usually including the remote, for
 example `origin/master`.
