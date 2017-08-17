@@ -10,6 +10,7 @@ import netaddr
 import os
 import subprocess
 import sys
+import re
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -52,8 +53,25 @@ deploystatic = cfg.get('global', 'deploystatic')
 def deploy(repository, key):
     cfg.refresh()
 
-    if not cfg.has_section(repository):
-        return "Repo not found", 404
+    if cfg.has_section(repository):
+        # Change * back into * if for some reason it was used for a
+        # non-branch repository
+        reporeplace = '*'
+    else:
+        (base, branch) = repository.split('-', 1)
+        if cfg.has_section('{0}-*'.format(base)):
+            repository = '{0}-*'.format(base)
+            reporeplace = branch
+
+            # Verify this repo type can handle
+            _replaceable_types = ['pgeubranch', ]
+            if cfg.get(repository, 'type') not in _replaceable_types:
+                return "Replacement paths only supported for {0}".format(', '.join(-replaceable_types))
+
+            if not re.match('^[a-z0-9]+$', branch):
+                return "Invalid character(s) in branch name '{0}'".format(branch)
+        else:
+            return "Repo not found", 404
     for k in 'key', 'type', 'root':
         if not cfg.has_option(repository, k):
             eprint("Repository {0} is missing key {1}".format(repository, k))
@@ -105,16 +123,16 @@ def deploy(repository, key):
             git_operation(repository, 'fetch')
             run_command(repository, deploystatic,
                         cfg.get(repository, 'root'),
-                        cfg.get(repository, 'target'),
+                        cfg.get(repository, 'target').replace('*', reporeplace),
                         '--branch',
-                        cfg.get(repository, 'branch'),
+                        cfg.get(repository, 'branch').replace('*', reporeplace),
             )
             if cfg.has_option(repository, 'templates'):
                 run_command(repository, deploystatic, '--templates',
                             cfg.get(repository, 'root'),
-                            cfg.get(repository, 'templates'),
+                            cfg.get(repository, 'templates').replace('*', reporeplace),
                             '--branch',
-                            cfg.get(repository, 'branch'),
+                            cfg.get(repository, 'branch').replace('*', reporeplace),
                 )
         else:
             eprint("Repository {0} has an invalid type {1}".format(

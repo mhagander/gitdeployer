@@ -62,3 +62,26 @@ variables set:
 
 `branch` specifies the branch name, usually including the remote, for
 example `origin/master`.
+
+
+Branch name substitution
+------------------------
+
+When using the `pgeubranch` type, branch name substitution can be
+used to avoid a lot of reptition. By ending a repository name with -*,
+it will be enabled, and the * will be replaced with the branch name.
+For example:
+
+```
+[somerepo-*]
+key=secret
+type=pgeubranch
+root=/some/where/gitrepo
+target=/some/web/root/*
+templates=/some/web/templates/*
+branch=origin/*
+```
+
+In this example, a ping to `/deploy/somerepo-branch1/secret` will
+cause the branch `origin/branch1` to be deployed to
+`/some/web/root/branch1` and templates to `/some/web/templates/*`.
