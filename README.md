@@ -15,7 +15,7 @@ the URL. There is no attempt to do rate limiting or anything like
 that.
 
 Each repository is assigned a name and a key. The url format is
-`/<reponame>/<key>/`, and any `GET` to this url will initiate a
+`/deploy/<reponame>/<key>/`, and any `GET` to this url will initiate a
 deployment.
 
 
