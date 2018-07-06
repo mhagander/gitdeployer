@@ -85,3 +85,12 @@ branch=origin/*
 In this example, a ping to `/deploy/somerepo-branch1/secret` will
 cause the branch `origin/branch1` to be deployed to
 `/some/web/root/branch1` and templates to `/some/web/templates/*`.
+
+Notification
+------------
+If the key `notify` is set for a repository, then whenever this
+repository is updated in a way that changes any files (so not if a
+deploy is triggered but there was no update), the script/program
+defined in `notify` gets called. This scripts gets the list of git
+revisions in the format `abc123abc..def345def` on the command line and
+a list of modified files on standard input, one file per line.

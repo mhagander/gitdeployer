@@ -32,3 +32,6 @@ target=/tmp/target
 
 ; Optional git branch name (depending on repository type)
 branch=origin/master
+
+; Optional script to notify of updates
+notify=/some/where/notify.sh

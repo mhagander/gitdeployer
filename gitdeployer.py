@@ -34,14 +34,50 @@ class ReloadingConfigParser(object):
             self._load()
 
 def run_command(reponame, *command):
-    # We don't bother with the actual output
-    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'))
+    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     s.wait(10)
     if s.returncode != 0:
         raise Exception("Command {0} returned {1}".format(command[0], s.returncode))
+    return [l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()]
 
-def git_operation(reponame, *operations):
-    run_command(reponame, '/usr/bin/git', *operations)
+def pipe_command(reponame, pipedata, *command):
+    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    outs, errs = s.communicate(pipedata.encode('utf8'))
+    if s.returncode != 0:
+        raise Exception("Command {0} returned {1}".format(command[0], s.returncode))
+    return [l.decode('utf8', errors='ignore').rstrip() for l in outs.splitlines()]
+
+# Regexp that matches the "fetched branch" lines in git output and captures the
+# branch names and start/end revisions from it.
+re_revs = re.compile('\s{3}([a-z0-9]+\.\.[a-z0-9]+)\s+(\S+)\s+->')
+def git_operation(reponame, operation, branch=None):
+    if operation == 'pull':
+        operations = ['pull', '--rebase']
+    elif operation == 'fetch':
+        operations = ['fetch', ]
+    else:
+        raise Exception("Unknown operation")
+
+    if not branch:
+        branch = run_command(reponame, '/usr/bin/git', 'symbolic-ref', '--short', 'HEAD')[0].strip()
+
+    lines = run_command(reponame, '/usr/bin/git', *operations)
+    parsing_revs = False
+    for l in lines:
+        if parsing_revs:
+            m = re_revs.match(l)
+            if m:
+                if m.group(2) == branch:
+                    return m.group(1)
+        elif l.startswith('From '):
+            parsing_revs = True
+    return ''
+
+def get_files_for_rev(reponame, revs):
+    if revs:
+        return run_command(reponame, '/usr/bin/git', 'diff-tree', '--no-commit-id', '--name-only', '-r', revs)
+    else:
+        return []
 
 cfg = ReloadingConfigParser('gitdeployer.ini')
 app = Flask('gitdeployer')
@@ -90,10 +126,10 @@ def deploy(repository, key):
             # Basic django repository. For this repo type, we do a git pull. If something
             # has changed, we count on the uwsgi process to reload the app.
             # XXX: in the future, consider doing automatic migration?
-            git_operation(repository, 'pull', '--rebase')
+            revs = git_operation(repository, 'pull')
         elif cfg.get(repository, 'type') == 'static':
             # This is just a pure static checkout
-            git_operation(repository, 'pull', '--rebase')
+            revs = git_operation(repository, 'pull')
         elif cfg.get(repository, 'type') == 'pgeustatic':
             # For pgeu static, we pull the git repo and then deploy from there.
             # The correct branch has to be checked out.
@@ -102,7 +138,7 @@ def deploy(repository, key):
                     eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
 
-            git_operation(repository, 'pull', '--rebase')
+            revs = git_operation(repository, 'pull')
             run_command(repository, deploystatic,
                         cfg.get(repository, 'root'),
                         cfg.get(repository, 'target'),
@@ -120,7 +156,7 @@ def deploy(repository, key):
                     eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
 
-            git_operation(repository, 'fetch')
+            revs = git_operation(repository, 'fetch', branch)
             run_command(repository, deploystatic,
                         cfg.get(repository, 'root'),
                         cfg.get(repository, 'target').replace('*', reporeplace),
@@ -143,6 +179,14 @@ def deploy(repository, key):
         return "Internal error", 500
 
     eprint("Deployed repository {0}".format(repository))
+
+    if cfg.has_option(repository, 'notify') and revs:
+        # There is a script to notify. Figure out affected files.
+        files = get_files_for_rev(repository, revs)
+        res = pipe_command(repository, "\n".join(files), cfg.get(repository, 'notify'), revs)
+        eprint("\n".join(res))
+        eprint("Completed trigger for {0}".format(repository))
+
     return "OK"
 
 @app.before_request
