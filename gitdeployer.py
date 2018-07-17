@@ -93,6 +93,7 @@ def deploy(repository, key):
         # Change * back into * if for some reason it was used for a
         # non-branch repository
         reporeplace = '*'
+        branch = None
     else:
         (base, branch) = repository.split('-', 1)
         if cfg.has_section('{0}-*'.format(base)):
@@ -155,6 +156,11 @@ def deploy(repository, key):
                 if not cfg.has_option(repository, k):
                     eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
+
+            # Branch will be set for wildcard deploys already, but for deploys
+            # off a static branch we have to get it here.
+            if not branch:
+                branch = cfg.get(repository, 'branch')
 
             revs = git_operation(repository, 'fetch', branch)
             run_command(repository, deploystatic,
