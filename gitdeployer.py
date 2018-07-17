@@ -37,14 +37,14 @@ def run_command(reponame, *command):
     s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     s.wait(10)
     if s.returncode != 0:
-        raise Exception("Command {0} returned {1}".format(command[0], s.returncode))
+        raise Exception("Command {0} returned {1}".format(" ".join(command), s.returncode))
     return [l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()]
 
 def pipe_command(reponame, pipedata, *command):
     s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     outs, errs = s.communicate(pipedata.encode('utf8'))
     if s.returncode != 0:
-        raise Exception("Command {0} returned {1}".format(command[0], s.returncode))
+        raise Exception("Command {0} returned {1}".format(" ".join(command), s.returncode))
     return [l.decode('utf8', errors='ignore').rstrip() for l in outs.splitlines()]
 
 # Regexp that matches the "fetched branch" lines in git output and captures the
