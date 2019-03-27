@@ -136,8 +136,14 @@ def deploy(repository, key):
         if cfg.get(repository, 'type') == 'django':
             # Basic django repository. For this repo type, we do a git pull. If something
             # has changed, we count on the uwsgi process to reload the app.
-            # XXX: in the future, consider doing automatic migration?
             revs = git_operation(repository, 'pull')
+            if os.path.islink(os.path.join(cfg.get(repository, 'root'), 'python')) and os.path.isfile(os.path.join(cfg.get(repository, 'root'), 'manage.py')):
+                (ok, out) = run_command_conditional(repository, "./python", "manage.py", "migrate", "--noinput")
+                if ok:
+                    output += out
+                else:
+                    eprint("Failed to run migration in {0}".format(repository))
+                    return out, 500
         elif cfg.get(repository, 'type') == 'static':
             # This is just a pure static checkout
             revs = git_operation(repository, 'pull')

@@ -27,16 +27,17 @@ git repository root, but some types also need more information.
 
 ### static
 
-This repository type is almost as simple. It will just execute a `git
+This repository type is the simplest possible. It will just execute a `git
 fetch --rebase` in the root directory and then it will be done.
 
 ### django
 
-This repository type is almost as simple. It will just execute a `git
-fetch --rebase` in the root directory and then it will be done.
+This repository type is almost as simple. It will first execute a `git
+fetch --rebase` in the root directory.
 
-A consideration for the future could be to run an automatic migration
-on it, but that's not implemented yet.
+If a symlink called `python` and a file called `manage.py` exists in
+the root directory, it will also execute `./python manage.py migrate`
+in this directory.
 
 ### pgeustatic
 
