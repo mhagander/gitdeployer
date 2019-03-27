@@ -35,3 +35,6 @@ branch=origin/master
 
 ; Optional script to notify of updates
 notify=/some/where/notify.sh
+
+; Optionally hide output from commands
+;hideoutput=1

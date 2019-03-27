@@ -40,6 +40,15 @@ def run_command(reponame, *command):
         raise Exception("Command {0} returned {1}".format(" ".join(command), s.returncode))
     return [l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()]
 
+def run_command_conditional(reponame, *command):
+    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    s.wait(10)
+    out = "\n".join([l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()])
+    if cfg.has_option(reponame, 'hideoutput') and cfg.get(reponame, 'hideoutput') == '1':
+        out=''
+
+    return (s.returncode == 0, out)
+
 def pipe_command(reponame, pipedata, *command):
     s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     outs, errs = s.communicate(pipedata.encode('utf8'))
@@ -122,6 +131,7 @@ def deploy(repository, key):
             repository, cfg.get(repository, 'root')))
         return "Not a git repo", 500
 
+    output = ""
     try:
         if cfg.get(repository, 'type') == 'django':
             # Basic django repository. For this repo type, we do a git pull. If something
@@ -140,15 +150,26 @@ def deploy(repository, key):
                     return "Repo misconfigured", 500
 
             revs = git_operation(repository, 'pull')
-            run_command(repository, deploystatic,
-                        cfg.get(repository, 'root'),
-                        cfg.get(repository, 'target'),
+            (ok, out) = run_command_conditional(repository, deploystatic,
+                                                cfg.get(repository, 'root'),
+                                                cfg.get(repository, 'target'),
             )
+            if ok:
+                output += out
+            else:
+                eprint("Failed run deploystatic in {0}".format(repository))
+                return out, 500
+
             if cfg.has_option(repository, 'templates'):
-                run_command(repository, deploystatic, '--templates',
-                            cfg.get(repository, 'root'),
-                            cfg.get(repository, 'templates'),
+                (ok, out) = run_command_conditional(repository, deploystatic, '--templates',
+                                                    cfg.get(repository, 'root'),
+                                                    cfg.get(repository, 'templates'),
                 )
+                if ok:
+                    output += out
+                else:
+                    eprint("Failed run deploystatic for templates in {0}".format(repository))
+                    return out, 500
         elif cfg.get(repository, 'type') == 'pgeubranch':
             # For pgeu branch, we fetch the git repository and then deploy directly from
             # that using a tar export.
@@ -163,26 +184,38 @@ def deploy(repository, key):
                 branch = cfg.get(repository, 'branch')
 
             revs = git_operation(repository, 'fetch', branch)
-            run_command(repository, deploystatic,
-                        cfg.get(repository, 'root'),
-                        cfg.get(repository, 'target').replace('*', reporeplace),
-                        '--branch',
-                        cfg.get(repository, 'branch').replace('*', reporeplace),
+            (ok, out) = run_command_conditional(repository, deploystatic,
+                                                cfg.get(repository, 'root'),
+                                                cfg.get(repository, 'target').replace('*', reporeplace),
+                                                '--branch',
+                                                cfg.get(repository, 'branch').replace('*', reporeplace),
             )
+            if ok:
+                output += out
+            else:
+                eprint("Failed run deploystatic in {0}".format(repository))
+                return out, 500
+
             if cfg.has_option(repository, 'templates'):
-                run_command(repository, deploystatic, '--templates',
-                            cfg.get(repository, 'root'),
-                            cfg.get(repository, 'templates').replace('*', reporeplace),
-                            '--branch',
-                            cfg.get(repository, 'branch').replace('*', reporeplace),
+                (ok, out) = run_command_conditional(repository, deploystatic, '--templates',
+                                                    cfg.get(repository, 'root'),
+                                                    cfg.get(repository, 'templates').replace('*', reporeplace),
+                                                    '--branch',
+                                                    cfg.get(repository, 'branch').replace('*', reporeplace),
                 )
+                if ok:
+                    output += out
+                else:
+                    eprint("Failed run deploystatic for templates in {0}".format(repository))
+                    return out, 500
+
         else:
             eprint("Repository {0} has an invalid type {1}".format(
                 repository, cfg.get(repository, 'type')))
             return "Invalid git repo type", 500
     except Exception as e:
         eprint("Failed to update {0}: {1}".format(repository, e))
-        return "Internal error", 500
+        return str(e), 500
 
     eprint("Deployed repository {0}".format(repository))
 
@@ -193,7 +226,9 @@ def deploy(repository, key):
         eprint("\n".join(res))
         eprint("Completed trigger for {0}".format(repository))
 
-    return "OK"
+    if not output:
+        output = "OK"
+    return output
 
 @app.before_request
 def limit_remote_addr():
