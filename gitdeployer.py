@@ -33,28 +33,40 @@ class ReloadingConfigParser(object):
             eprint("Reloading configuration")
             self._load()
 
-def run_command(reponame, *command):
-    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    s.wait(10)
-    if s.returncode != 0:
-        raise Exception("Command {0} returned {1}".format(" ".join(command), s.returncode))
-    return [l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()]
+
+def run_command_internal(reponame, pipedata, *command):
+    try:
+        s = subprocess.run(
+            command,
+            cwd=cfg.get(reponame, 'root'),
+            input=pipedata,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            timeout=30,
+        )
+        return (s.returncode, s.stdout)
+    except subprocess.TimeoutExpired:
+        return (999, '**TIMEOUT**')
+
 
 def run_command_conditional(reponame, *command):
-    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    s.wait(10)
-    out = "\n".join([l.decode('utf8', errors='ignore').rstrip() for l in s.stdout.readlines()])
-    if cfg.has_option(reponame, 'hideoutput') and cfg.get(reponame, 'hideoutput') == '1':
-        out=''
+    return run_command_internal(reponame, None, *command)
 
-    return (s.returncode == 0, out)
+
+def run_command(reponame, *command):
+    (code, out) = run_command_internal(reponame, None, *command)
+    if code != 0:
+        raise Exception("Command {0} returned {1}".format(" ".join(command), code))
+    return out.splitlines()
+
 
 def pipe_command(reponame, pipedata, *command):
-    s = subprocess.Popen(command, cwd=cfg.get(reponame, 'root'), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    outs, errs = s.communicate(pipedata.encode('utf8'))
-    if s.returncode != 0:
-        raise Exception("Command {0} returned {1}".format(" ".join(command), s.returncode))
-    return [l.decode('utf8', errors='ignore').rstrip() for l in outs.splitlines()]
+    (code, out) = run_command_internal(reponame, pipedata, *command)
+    if code != 0:
+        raise Exception("Command {0} returned {1}".format(" ".join(command), code))
+    return out
+
 
 # Regexp that matches the "fetched branch" lines in git output and captures the
 # branch names and start/end revisions from it.
@@ -71,6 +83,7 @@ def git_operation(reponame, operation, branch=None):
         branch = run_command(reponame, '/usr/bin/git', 'symbolic-ref', '--short', 'HEAD')[0].strip()
 
     lines = run_command(reponame, '/usr/bin/git', *operations)
+
     parsing_revs = False
     for l in lines:
         if parsing_revs:
@@ -138,11 +151,11 @@ def deploy(repository, key):
             # has changed, we count on the uwsgi process to reload the app.
             revs = git_operation(repository, 'pull')
             if os.path.islink(os.path.join(cfg.get(repository, 'root'), 'python')) and os.path.isfile(os.path.join(cfg.get(repository, 'root'), 'manage.py')):
-                (ok, out) = run_command_conditional(repository, "./python", "manage.py", "migrate", "--noinput")
-                if ok:
+                (code, out) = run_command_conditional(repository, "./python", "manage.py", "migrate", "--noinput")
+                if code == 0:
                     output += out
                 else:
-                    eprint("Failed to run migration in {0}".format(repository))
+                    eprint("Failed to run migration in {0}: {1}".format(repository, code))
                     return out, 500
         elif cfg.get(repository, 'type') == 'static':
             # This is just a pure static checkout
@@ -156,25 +169,25 @@ def deploy(repository, key):
                     return "Repo misconfigured", 500
 
             revs = git_operation(repository, 'pull')
-            (ok, out) = run_command_conditional(repository, deploystatic,
-                                                cfg.get(repository, 'root'),
-                                                cfg.get(repository, 'target'),
+            (code, out) = run_command_conditional(repository, deploystatic,
+                                                  cfg.get(repository, 'root'),
+                                                  cfg.get(repository, 'target'),
             )
-            if ok:
+            if code == 0:
                 output += out
             else:
-                eprint("Failed run deploystatic in {0}".format(repository))
+                eprint("Failed run deploystatic in {0}: {1}".format(repository, code))
                 return out, 500
 
             if cfg.has_option(repository, 'templates'):
-                (ok, out) = run_command_conditional(repository, deploystatic, '--templates',
-                                                    cfg.get(repository, 'root'),
-                                                    cfg.get(repository, 'templates'),
+                (code, out) = run_command_conditional(repository, deploystatic, '--templates',
+                                                      cfg.get(repository, 'root'),
+                                                      cfg.get(repository, 'templates'),
                 )
-                if ok:
+                if code == 0:
                     output += out
                 else:
-                    eprint("Failed run deploystatic for templates in {0}".format(repository))
+                    eprint("Failed run deploystatic for templates in {0}: {1}".format(repository, code))
                     return out, 500
         elif cfg.get(repository, 'type') == 'pgeubranch':
             # For pgeu branch, we fetch the git repository and then deploy directly from
@@ -190,29 +203,29 @@ def deploy(repository, key):
                 branch = cfg.get(repository, 'branch')
 
             revs = git_operation(repository, 'fetch', branch)
-            (ok, out) = run_command_conditional(repository, deploystatic,
-                                                cfg.get(repository, 'root'),
-                                                cfg.get(repository, 'target').replace('*', reporeplace),
-                                                '--branch',
-                                                cfg.get(repository, 'branch').replace('*', reporeplace),
+            (code, out) = run_command_conditional(repository, deploystatic,
+                                                  cfg.get(repository, 'root'),
+                                                  cfg.get(repository, 'target').replace('*', reporeplace),
+                                                  '--branch',
+                                                  cfg.get(repository, 'branch').replace('*', reporeplace),
             )
-            if ok:
+            if code == 0:
                 output += out
             else:
-                eprint("Failed run deploystatic in {0}".format(repository))
+                eprint("Failed run deploystatic in {0}: {1}".format(repository, code))
                 return out, 500
 
             if cfg.has_option(repository, 'templates'):
-                (ok, out) = run_command_conditional(repository, deploystatic, '--templates',
-                                                    cfg.get(repository, 'root'),
-                                                    cfg.get(repository, 'templates').replace('*', reporeplace),
-                                                    '--branch',
-                                                    cfg.get(repository, 'branch').replace('*', reporeplace),
+                (code, out) = run_command_conditional(repository, deploystatic, '--templates',
+                                                      cfg.get(repository, 'root'),
+                                                      cfg.get(repository, 'templates').replace('*', reporeplace),
+                                                      '--branch',
+                                                      cfg.get(repository, 'branch').replace('*', reporeplace),
                 )
-                if ok:
+                if code == 0:
                     output += out
                 else:
-                    eprint("Failed run deploystatic for templates in {0}".format(repository))
+                    eprint("Failed run deploystatic for templates in {0}: {1}".format(repository, code))
                     return out, 500
 
         else:
