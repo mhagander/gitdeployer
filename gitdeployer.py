@@ -12,8 +12,10 @@ import subprocess
 import sys
 import re
 
+
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
 
 class ReloadingConfigParser(object):
     def __init__(self, filename):
@@ -71,6 +73,8 @@ def pipe_command(reponame, pipedata, *command):
 # Regexp that matches the "fetched branch" lines in git output and captures the
 # branch names and start/end revisions from it.
 re_revs = re.compile('\s{3}([a-z0-9]+\.\.[a-z0-9]+)\s+(\S+)\s+->')
+
+
 def git_operation(reponame, operation, branch=None):
     if operation == 'pull':
         operations = ['pull', '--rebase']
@@ -95,11 +99,13 @@ def git_operation(reponame, operation, branch=None):
             parsing_revs = True
     return ''
 
+
 def get_files_for_rev(reponame, revs):
     if revs:
         return run_command(reponame, '/usr/bin/git', 'diff-tree', '--no-commit-id', '--name-only', '-r', revs)
     else:
         return []
+
 
 cfg = ReloadingConfigParser('gitdeployer.ini')
 app = Flask('gitdeployer')
@@ -175,9 +181,10 @@ def _deploy(repository, key):
                     return "Repo misconfigured", 500
 
             revs = git_operation(repository, 'pull')
-            (code, out) = run_command_conditional(repository, deploystatic,
-                                                  cfg.get(repository, 'root'),
-                                                  cfg.get(repository, 'target'),
+            (code, out) = run_command_conditional(
+                repository, deploystatic,
+                cfg.get(repository, 'root'),
+                cfg.get(repository, 'target'),
             )
             if code == 0:
                 output += out
@@ -186,9 +193,10 @@ def _deploy(repository, key):
                 return out, 500
 
             if cfg.has_option(repository, 'templates'):
-                (code, out) = run_command_conditional(repository, deploystatic, '--templates',
-                                                      cfg.get(repository, 'root'),
-                                                      cfg.get(repository, 'templates'),
+                (code, out) = run_command_conditional(
+                    repository, deploystatic, '--templates',
+                    cfg.get(repository, 'root'),
+                    cfg.get(repository, 'templates'),
                 )
                 if code == 0:
                     output += out
@@ -198,7 +206,7 @@ def _deploy(repository, key):
         elif cfg.get(repository, 'type') == 'pgeubranch':
             # For pgeu branch, we fetch the git repository and then deploy directly from
             # that using a tar export.
-            for k in 'target', 'branch' :
+            for k in 'target', 'branch':
                 if not cfg.has_option(repository, k):
                     eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
@@ -209,11 +217,12 @@ def _deploy(repository, key):
                 branch = cfg.get(repository, 'branch')
 
             revs = git_operation(repository, 'fetch', branch)
-            (code, out) = run_command_conditional(repository, deploystatic,
-                                                  cfg.get(repository, 'root'),
-                                                  cfg.get(repository, 'target').replace('*', reporeplace),
-                                                  '--branch',
-                                                  cfg.get(repository, 'branch').replace('*', reporeplace),
+            (code, out) = run_command_conditional(
+                repository, deploystatic,
+                cfg.get(repository, 'root'),
+                cfg.get(repository, 'target').replace('*', reporeplace),
+                '--branch',
+                cfg.get(repository, 'branch').replace('*', reporeplace),
             )
             if code == 0:
                 output += out
@@ -222,11 +231,12 @@ def _deploy(repository, key):
                 return out, 500
 
             if cfg.has_option(repository, 'templates'):
-                (code, out) = run_command_conditional(repository, deploystatic, '--templates',
-                                                      cfg.get(repository, 'root'),
-                                                      cfg.get(repository, 'templates').replace('*', reporeplace),
-                                                      '--branch',
-                                                      cfg.get(repository, 'branch').replace('*', reporeplace),
+                (code, out) = run_command_conditional(
+                    repository, deploystatic, '--templates',
+                    cfg.get(repository, 'root'),
+                    cfg.get(repository, 'templates').replace('*', reporeplace),
+                    '--branch',
+                    cfg.get(repository, 'branch').replace('*', reporeplace),
                 )
                 if code == 0:
                     output += out
@@ -255,6 +265,7 @@ def _deploy(repository, key):
         output = "OK"
     return output
 
+
 @app.before_request
 def limit_remote_addr():
     cfg.refresh()
@@ -262,6 +273,7 @@ def limit_remote_addr():
         if netaddr.IPAddress(request.remote_addr) in netaddr.IPNetwork(a):
             return
     abort(403)
+
 
 if __name__ == "__main__":
     addresses = [netaddr.IPNetwork(c) for c in cfg.get('global', 'sources').split()]
