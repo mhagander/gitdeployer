@@ -4,7 +4,7 @@
 #                  initiate git based deploys from it.
 #
 
-from flask import Flask, request, abort
+from flask import Flask, request, abort, make_response
 import configparser
 import netaddr
 import os
@@ -109,6 +109,12 @@ deploystatic = cfg.get('global', 'deploystatic')
 
 @app.route("/deploy/<repository>/<key>", methods=['GET', 'POST'])
 def deploy(repository, key):
+    r = make_response(_deploy(repository, key))
+    r.mimetype = 'text/plain'
+    return r
+
+
+def _deploy(repository, key):
     cfg.refresh()
 
     if cfg.has_section(repository):
