@@ -87,6 +87,22 @@ In this example, a ping to `/deploy/somerepo-branch1/secret` will
 cause the branch `origin/branch1` to be deployed to
 `/some/web/root/branch1` and templates to `/some/web/templates/*`.
 
+Deploying specific commits
+--------------------------
+In normal mode, for any type except `pgeubranch` the existing branch
+in the checked out directory will be rebased on it's own master using
+`git pull --rebase`.
+
+It is also possible to check out an individual commit. To do that,
+the "ping" that's sent should be a POST and include the variable
+`commit` as part of the submit (with normal form encoding). When
+found, this commit will be checked out, instead of a rebase. This will
+normally result in a detached head, but if it's moved to the tip of
+the branch again it will "reattach".
+
+For this to be allowed, the parameter `allowcommit` must be set in the
+configuration for the repository.
+
 Notification
 ------------
 If the key `notify` is set for a repository, then whenever this
@@ -95,3 +111,6 @@ deploy is triggered but there was no update), the script/program
 defined in `notify` gets called. This scripts gets the list of git
 revisions in the format `abc123abc..def345def` on the command line and
 a list of modified files on standard input, one file per line.
+
+Notification currently does not work when checking out an individual
+commit, only when a branch is being followed.

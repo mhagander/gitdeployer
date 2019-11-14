@@ -33,6 +33,9 @@ target=/tmp/target
 ; Optional git branch name (depending on repository type)
 branch=origin/master
 
+; Optionally allow deployment of individual commits (depending on repository type)
+; allowcommit=1
+
 ; Optional script to notify of updates
 notify=/some/where/notify.sh
 

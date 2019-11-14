@@ -75,9 +75,19 @@ def pipe_command(reponame, pipedata, *command):
 re_revs = re.compile('\s{3}([a-z0-9]+\.\.[a-z0-9]+)\s+(\S+)\s+->')
 
 
-def git_operation(reponame, operation, branch=None):
+def git_operation(reponame, operation, branch=None, specificcommit=None):
     if operation == 'pull':
-        operations = ['pull', '--rebase']
+        if specificcommit:
+            # When asking for a specific commit, we run a git fetch and then a
+            # git checkout for that specific commit.
+            # When doing a specific commit, returning a revision list is not
+            # currently supported.
+            run_command(reponame, '/usr/bin/git', 'fetch')
+            run_command(reponame, '/usr/bin/git', 'checkout', specificcommit)
+            return None
+        else:
+            # Just a pure git pull --rebase to get to the branch tip
+            operations = ['pull', '--rebase']
     elif operation == 'fetch':
         operations = ['fetch', ]
     else:
@@ -115,12 +125,17 @@ deploystatic = cfg.get('global', 'deploystatic')
 
 @app.route("/deploy/<repository>/<key>", methods=['GET', 'POST'])
 def deploy(repository, key):
-    r = make_response(_deploy(repository, key))
+    if request.method == 'POST':
+        specificcommit = request.form.get('commit', None)
+    else:
+        specificcommit = None
+
+    r = make_response(_deploy(repository, key, specificcommit))
     r.mimetype = 'text/plain'
     return r
 
 
-def _deploy(repository, key):
+def _deploy(repository, key, specificcommit):
     cfg.refresh()
 
     if cfg.has_section(repository):
@@ -156,12 +171,16 @@ def _deploy(repository, key):
             repository, cfg.get(repository, 'root')))
         return "Not a git repo", 500
 
+    if specificcommit and not cfg.getboolean(repository, 'allowcommit', fallback=False):
+        eprint("Repository {0} does not allow individual commit deployes".format(repository))
+        return "Individual commits not allowed", 500
+
     output = ""
     try:
         if cfg.get(repository, 'type') == 'django':
             # Basic django repository. For this repo type, we do a git pull. If something
             # has changed, we count on the uwsgi process to reload the app.
-            revs = git_operation(repository, 'pull')
+            revs = git_operation(repository, 'pull', specificcommit=specificcommit)
             if os.path.islink(os.path.join(cfg.get(repository, 'root'), 'python')) and os.path.isfile(os.path.join(cfg.get(repository, 'root'), 'manage.py')):
                 (code, out) = run_command_conditional(repository, "./python", "manage.py", "migrate", "--noinput")
                 if code == 0:
@@ -171,7 +190,7 @@ def _deploy(repository, key):
                     return out, 500
         elif cfg.get(repository, 'type') == 'static':
             # This is just a pure static checkout
-            revs = git_operation(repository, 'pull')
+            revs = git_operation(repository, 'pull', specificcommit=specificcommit)
         elif cfg.get(repository, 'type') == 'pgeustatic':
             # For pgeu static, we pull the git repo and then deploy from there.
             # The correct branch has to be checked out.
@@ -180,7 +199,7 @@ def _deploy(repository, key):
                     eprint("Repository {0} is missing key {1}".format(repository, k))
                     return "Repo misconfigured", 500
 
-            revs = git_operation(repository, 'pull')
+            revs = git_operation(repository, 'pull', specificcommit=specificcommit)
             (code, out) = run_command_conditional(
                 repository, deploystatic,
                 cfg.get(repository, 'root'),
