@@ -28,12 +28,12 @@ git repository root, but some types also need more information.
 ### static
 
 This repository type is the simplest possible. It will just execute a `git
-fetch --rebase` in the root directory and then it will be done.
+pull --rebase` in the root directory and then it will be done.
 
 ### django
 
 This repository type is almost as simple. It will first execute a `git
-fetch --rebase` in the root directory.
+pull --rebase` in the root directory.
 
 If a symlink called `python` and a file called `manage.py` exists in
 the root directory, it will also execute `./python manage.py migrate`
