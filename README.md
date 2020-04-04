@@ -39,6 +39,11 @@ If a symlink called `python` and a file called `manage.py` exists in
 the root directory, it will also execute `./python manage.py migrate`
 in this directory.
 
+If there are any files named `*.pyc` in the checkout (recursively),
+these are removed before doing the pull, to ensure there are not any
+left for modules where the python source file has been removed. They
+will usually be recreated by the migrate step, if it is run.
+
 ### pgeustatic
 
 This repository type deploys a repository using the `deploystatic`

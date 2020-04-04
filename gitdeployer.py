@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import re
+from pathlib import Path
 
 
 def eprint(*args, **kwargs):
@@ -180,7 +181,19 @@ def _deploy(repository, key, specificcommit):
         if cfg.get(repository, 'type') == 'django':
             # Basic django repository. For this repo type, we do a git pull. If something
             # has changed, we count on the uwsgi process to reload the app.
+
+            # Clean up any old *.pyc files. Otherwise weird things can happen when files are
+            # removed from the repository.
+            for p in Path(cfg.get(repository, 'root')).rglob('*.pyc'):
+                try:
+                    os.unlink(p)
+                except Exception:
+                    pass
+
+            # Then pull the repository
             revs = git_operation(repository, 'pull', specificcommit=specificcommit)
+
+            # Run migrations if there is a python symlink available
             if os.path.islink(os.path.join(cfg.get(repository, 'root'), 'python')) and os.path.isfile(os.path.join(cfg.get(repository, 'root'), 'manage.py')):
                 (code, out) = run_command_conditional(repository, "./python", "manage.py", "migrate", "--noinput")
                 if code == 0:
