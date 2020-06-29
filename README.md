@@ -54,7 +54,7 @@ variables set:
 `target` specifies the directory to deploy the website to.
 `templates` specifies the directory to deploy raw templates into.
 
-## pgeubranch
+### pgeubranch
 
 This repository type deploys a repository using the `deploystatic`
 method from pgeu, but instead of working from a checkout of an
