@@ -73,7 +73,7 @@ def pipe_command(reponame, pipedata, *command):
 
 # Regexp that matches the "fetched branch" lines in git output and captures the
 # branch names and start/end revisions from it.
-re_revs = re.compile('\s{3}([a-z0-9]+\.\.[a-z0-9]+)\s+(\S+)\s+->')
+re_revs = re.compile(r'\s{3}([a-z0-9]+\.\.[a-z0-9]+)\s+(\S+)\s+->')
 
 
 def git_operation(reponame, operation, branch=None, specificcommit=None):
@@ -310,8 +310,9 @@ def limit_remote_addr():
 if __name__ == "__main__":
     addresses = [netaddr.IPNetwork(c) for c in cfg.get('global', 'sources').split()]
 
-    app.run(debug=cfg.getboolean("global", "debug", fallback=False),
-            host=cfg.get("global", "bindhost", fallback="127.0.0.1"),
-            port=cfg.getint('global', 'port'),
-            use_reloader=cfg.getboolean("global", "autoreload", fallback=True),
+    app.run(
+        debug=cfg.getboolean("global", "debug", fallback=False),
+        host=cfg.get("global", "bindhost", fallback="127.0.0.1"),
+        port=cfg.getint('global', 'port'),
+        use_reloader=cfg.getboolean("global", "autoreload", fallback=True),
     )
