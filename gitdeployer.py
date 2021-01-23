@@ -310,6 +310,8 @@ def limit_remote_addr():
 if __name__ == "__main__":
     addresses = [netaddr.IPNetwork(c) for c in cfg.get('global', 'sources').split()]
 
-    app.run(debug=cfg.get("global", "debug", fallback=False),
+    app.run(debug=cfg.getboolean("global", "debug", fallback=False),
             host=cfg.get("global", "bindhost", fallback="127.0.0.1"),
-            port=cfg.getint('global', 'port'))
+            port=cfg.getint('global', 'port'),
+            use_reloader=cfg.getboolean("global", "autoreload", fallback=True),
+    )

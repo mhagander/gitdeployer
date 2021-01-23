@@ -2,6 +2,9 @@
 ; Set to true for debugging. Always false in production!
 debug=False
 
+; Set to false to turn off automatic reloading on source code change.
+autoreload=True
+
 ; IP to bind to
 bindhost=127.0.0.1
 
