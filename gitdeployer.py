@@ -289,7 +289,7 @@ def _deploy(repository, key, specificcommit):
     if cfg.has_option(repository, 'notify') and revs:
         # There is a script to notify. Figure out affected files.
         files = get_files_for_rev(repository, revs)
-        res = pipe_command(repository, "\n".join(files), cfg.get(repository, 'notify'), revs)
+        res = pipe_command(repository, "\n".join(files), *cfg.get(repository, 'notify').split(), revs)
         eprint("\n".join(res))
         eprint("Completed trigger for {0}".format(repository))
 
