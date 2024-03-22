@@ -146,7 +146,7 @@ def _deploy(repository, key, specificcommit):
         # non-branch repository
         reporeplace = '*'
         branch = None
-    else:
+    elif '-' in repository:
         (base, branch) = repository.split('-', 1)
         if cfg.has_section('{0}-*'.format(base)):
             repository = '{0}-*'.format(base)
@@ -160,7 +160,10 @@ def _deploy(repository, key, specificcommit):
             if not re.match('^[a-z0-9]+$', branch):
                 return "Invalid character(s) in branch name '{0}'".format(branch)
         else:
-            return "Repo not found", 404
+            return "Repo (branched) not found", 404
+    else:
+        return "Repo not found", 404
+
     for k in 'key', 'type', 'root':
         if not cfg.has_option(repository, k):
             eprint("Repository {0} is missing key {1}".format(repository, k))
