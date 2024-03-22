@@ -69,6 +69,10 @@ variables set:
 `branch` specifies the branch name, usually including the remote, for
 example `origin/master`.
 
+### mirror
+
+This assumes a bare repository and will simply update it from the
+default upstream with a `git fetch --prune`, to keep a mirror in sync.
 
 Branch name substitution
 ------------------------

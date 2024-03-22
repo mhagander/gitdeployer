@@ -91,6 +91,8 @@ def git_operation(reponame, operation, branch=None, specificcommit=None):
             operations = ['pull', '--rebase']
     elif operation == 'fetch':
         operations = ['fetch', ]
+    elif operation == 'mirror':
+        operations = ['fetch', '--prune']
     else:
         raise Exception("Unknown operation")
 
@@ -166,8 +168,13 @@ def _deploy(repository, key, specificcommit):
     if not cfg.get(repository, 'key') == key:
         return "Invalid key", 401
 
-    # We only do git, so verify that the root is a dictionary
-    if not os.path.isdir("{0}/.git".format(cfg.get(repository, 'root'))):
+    # We only do git, so verify that the root is a directory.
+    if cfg.get(repository, 'type') == 'mirror':
+        if not os.path.isfile("{0}/config".format(cfg.get(repository, 'root'))):
+            eprint("Repository {0} has a root {1} that is not a bare git repository".format(
+                repository, cfg.get(repository, 'root')))
+            return "Not a bare git repo", 500
+    elif not os.path.isdir("{0}/.git".format(cfg.get(repository, 'root'))):
         eprint("Repository {0} has a root {1} that is not a git repository".format(
             repository, cfg.get(repository, 'root')))
         return "Not a git repo", 500
@@ -201,6 +208,9 @@ def _deploy(repository, key, specificcommit):
                 else:
                     eprint("Failed to run migration in {0}: {1}".format(repository, code))
                     return out, 500
+        elif cfg.get(repository, 'type') == 'mirror':
+            # This is bare repo that should just get mirrored, not deployed
+            revs = git_operation(repository, 'mirror')
         elif cfg.get(repository, 'type') == 'static':
             # This is just a pure static checkout
             revs = git_operation(repository, 'pull', specificcommit=specificcommit)
