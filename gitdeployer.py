@@ -155,7 +155,7 @@ def _deploy(repository, key, specificcommit):
             # Verify this repo type can handle
             _replaceable_types = ['pgeubranch', ]
             if cfg.get(repository, 'type') not in _replaceable_types:
-                return "Replacement paths only supported for {0}".format(', '.join(-replaceable_types))
+                return "Replacement paths only supported for {0}".format(', '.join(_replaceable_types))
 
             if not re.match('^[a-z0-9]+$', branch):
                 return "Invalid character(s) in branch name '{0}'".format(branch)
